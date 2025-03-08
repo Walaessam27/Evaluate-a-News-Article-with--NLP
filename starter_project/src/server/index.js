@@ -26,7 +26,14 @@ async function scrapeTextFromURL(url) {
 
         // Use Cheerio to load the HTML and extract the text
         const $ = cheerio.load(data);
-        let text = $('body').text().trim().replace(/\s+/g, ' '); // Clean whitespace
+
+        // Try targeting specific containers (e.g., articles, blog posts)
+        let text = $('article, .post, .content').text().trim();  // Example of targeting common content areas
+
+        // If no targeted content found, fallback to body text
+        if (!text) {
+            text = $('body').text().trim().replace(/\s+/g, ' ');
+        }
 
         // Check if text content exists
         if (!text) {
@@ -44,7 +51,9 @@ async function scrapeTextFromURL(url) {
     }
 }
 
+
 // Route to analyze text from a URL
+
 app.post('/analyze-url', async (req, res) => {
     const { url } = req.body;
 
@@ -62,10 +71,13 @@ app.post('/analyze-url', async (req, res) => {
             return res.status(400).json({ error: 'No text content found at the provided URL' });
         }
 
+        console.log("Text to be analyzed:", text);  // Log the scraped text
+
         // Step 2: Connect to the NLP API
         const NLP_API_URL = process.env.NLP_API_URL || 'https://kooye7u703.execute-api.us-east-1.amazonaws.com/NLPAnalyzer';
-
         const response = await axios.post(NLP_API_URL, { text });
+
+        console.log("NLP API Response:", response.data);  // Log API response
 
         // Check if API returned valid data
         if (!response.data) {
@@ -79,6 +91,7 @@ app.post('/analyze-url', async (req, res) => {
         return res.status(500).json({ error: 'Failed to analyze the URL' });
     }
 });
+
 
 // Default route
 app.get('/', (req, res) => {
