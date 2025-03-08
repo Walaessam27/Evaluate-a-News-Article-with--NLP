@@ -4,11 +4,15 @@ const bodyParser = require('body-parser');
 const axios = require('axios');
 const cheerio = require('cheerio');
 const cors = require('cors');
+const dotenv = require('dotenv'); // Load environment variables
+
+dotenv.config(); // Load .env file
 
 // Initialize the Express application
 const app = express();
+const PORT = process.env.PORT || 8000; // Use env variable if available
 
-// Apply middleware
+// Middleware
 app.use(cors()); // Enable Cross-Origin Resource Sharing
 app.use(bodyParser.json()); // Parse JSON request bodies
 
@@ -22,7 +26,7 @@ async function scrapeTextFromURL(url) {
 
         // Use Cheerio to load the HTML and extract the text
         const $ = cheerio.load(data);
-        const text = $('body').text().trim();
+        let text = $('body').text().trim().replace(/\s+/g, ' '); // Clean whitespace
 
         // Check if text content exists
         if (!text) {
@@ -31,7 +35,7 @@ async function scrapeTextFromURL(url) {
         }
 
         // Extract and return the first 200 characters of the text
-        const trimmedText = text.slice(0, 200);
+        const trimmedText = text.substring(0, 200);
         console.log(`Extracted Text (200 characters):\n${trimmedText}\n--- End of Text Preview ---`);
         return trimmedText;
     } catch (error) {
@@ -58,10 +62,15 @@ app.post('/analyze-url', async (req, res) => {
             return res.status(400).json({ error: 'No text content found at the provided URL' });
         }
 
-        // Step 2: Connect to the AWS NLP API
-        const response = await axios.post('https://kooye7u703.execute-api.us-east-1.amazonaws.com/NLPAnalyzer', {
-            text
-        });
+        // Step 2: Connect to the NLP API
+        const NLP_API_URL = process.env.NLP_API_URL || 'https://kooye7u703.execute-api.us-east-1.amazonaws.com/NLPAnalyzer';
+
+        const response = await axios.post(NLP_API_URL, { text });
+
+        // Check if API returned valid data
+        if (!response.data) {
+            return res.status(500).json({ error: 'Invalid response from NLP API' });
+        }
 
         // Send NLP API response back to frontend
         return res.json(response.data);
@@ -77,6 +86,6 @@ app.get('/', (req, res) => {
 });
 
 // Start the server
-app.listen(8000, () => {
-    console.log('Server running on port 8000');
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
 });
